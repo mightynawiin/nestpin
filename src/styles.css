@@ -16,6 +16,8 @@ button:disabled{cursor:wait;opacity:.7}
 .button:hover:not(:disabled){box-shadow:0 9px 20px #17241f20;transform:translateY(-2px)}
 .icon-button:hover{background:#e8f0eb;transform:translateY(-2px) rotate(3deg)}
 .profile-button:hover{box-shadow:0 7px 16px #17241f25;transform:translateY(-2px)}
+.install-button{border:1px solid #ffffff50;border-radius:9px;padding:9px 12px;background:#ffffff18;color:#fff;font-size:12px;font-weight:700;white-space:nowrap}
+.install-button:hover{background:#ffffff30;transform:translateY(-2px)}
 .leaflet-popup-content-wrapper:hover{box-shadow:0 16px 34px #17241f30;transform:translateY(-2px)}
 .map-pin{will-change:transform}
 .map-pin:active{transform:rotate(-45deg) translateY(2px) scale(.94)}
