@@ -1,8 +1,10 @@
-const CACHE = 'nestpin-shell-v1';
+const CACHE = 'nestpin-shell-v2';
 const SHELL_FILES = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {
@@ -23,6 +25,7 @@ self.addEventListener('activate', (event) => {
 
 // Cache-first for the app shell, network-first for everything else (map tiles, geocoding, storage API)
 self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
   const isShell = SHELL_FILES.some((f) => url.pathname.endsWith(f.replace('./', '')));
 
@@ -30,6 +33,12 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.match(event.request).then((cached) => cached || fetch(event.request))
     );
+    return;
   }
-  // All other requests (tiles, search, storage) just go to the network as normal.
+
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match('./index.html'))
+    );
+  }
 });
