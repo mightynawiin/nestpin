@@ -82,9 +82,11 @@ function AuthPanel({ onAuthed }) {
   const [mode, setMode] = useState('login');
   const [form, setForm] = useState({ email: '', password: '', name: '' });
   const [error, setError] = useState('');
-  const chooseMode = nextMode => { setMode(nextMode); window.setTimeout(() => document.querySelector('.auth-form input')?.focus(), 0); };
+  const [success, setSuccess] = useState('');
+  const [busy, setBusy] = useState(false);
+  const chooseMode = nextMode => { setMode(nextMode); setError(''); setSuccess(''); window.setTimeout(() => document.querySelector('.auth-form input')?.focus(), 0); };
   const submit = async (event) => {
-    event.preventDefault(); setError('');
+    event.preventDefault(); if (busy) return; setError(''); setSuccess(''); setBusy(true);
 
     try {
       const result = mode === 'login'
@@ -110,20 +112,25 @@ function AuthPanel({ onAuthed }) {
       }
 
       if (mode === 'signup' && !result.data.session) {
-        return setError('Account created. Please check your email to confirm it, then sign in.');
+        setSuccess('Account created. Check your email to confirm your account, then sign in.');
+        setForm(current => ({ ...current, password: '' }));
+        return;
       }
 
       onAuthed(result.data.user, mode === 'signup' ? form.name.trim() : null);
     } catch (err) {
       setError(err?.message || 'Something went wrong. Please try again.');
+    } finally {
+      setBusy(false);
     }
   };
   return <div className="auth-screen"><header className="landing-nav"><div className="brand"><span className="brand-mark"><House size={17} /></span> nestpin</div><div className="landing-actions"><button className="nav-link" onClick={() => chooseMode('login')}>Log in</button><button className="button nav-cta" onClick={() => chooseMode('signup')}>Sign up free</button></div></header><main className="landing-grid"><section className="landing-copy"><div className="landing-kicker"><span className="live-dot" /> Local homes. Better found.</div><h1>Make your next move feel <em>closer.</em></h1><p className="landing-lede">Nestpin turns the search for a home into a map you can actually feel. Discover places around you, share yours, and move with confidence.</p><div className="landing-proof"><div><strong>01</strong><span>Drop a pin<br />where it matters</span></div><div><strong>∞</strong><span>Homes worth<br />coming home to</span></div><div><strong>24/7</strong><span>Explore on<br />your own terms</span></div></div><div className="landing-visual"><img src={FALLBACK_HOUSE_PHOTOS[1]} alt="Modern home discovered on Nestpin" /><div className="visual-pin"><MapPin size={16} /><span>Find your place</span></div><div className="visual-caption"><span className="eyebrow">A calmer way to search</span><strong>From first look to front door.</strong></div></div></section><aside className="auth-panel auth-form"><div className="auth-panel-head"><span className="eyebrow">{mode === 'login' ? 'Welcome back' : 'Start exploring'}</span><h2>{mode === 'login' ? 'Your next place is waiting.' : 'Find a place that feels like yours.'}</h2><p className="muted">{mode === 'login' ? 'Pick up where you left off.' : 'Create your free account and start exploring.'}</p></div><div className="tabs"><button className={mode === 'login' ? 'active' : ''} onClick={() => chooseMode('login')}>Log in</button><button className={mode === 'signup' ? 'active' : ''} onClick={() => chooseMode('signup')}>Create account</button></div><form onSubmit={submit}>
       {mode === 'signup' && <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Display name" required />}
       <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="Email address" required />
       <input type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} placeholder="Password" minLength="6" required />
-      {error && <div className="error">{error}</div>}
-      <button className="button primary wide" type="submit">{mode === 'login' ? 'Continue to Nestpin' : 'Create my account'}</button>
+      {error && <div className="error" role="alert">{error}</div>}
+      {success && <div className="success" role="status">{success}</div>}
+      <button className="button primary wide" type="submit" disabled={busy}>{busy ? <><LoaderCircle className="spin" size={17} /> {mode === 'login' ? 'Signing in...' : 'Creating account...'}</> : mode === 'login' ? 'Continue to Nestpin' : 'Create my account'}</button>
     </form><p className="auth-note">Private by design. Your search stays yours.</p></aside></main><footer className="landing-footer"><span>Built for the way people really move.</span><span><i /> Discover nearby <i /> Share your space <i /> Find your fit</span></footer></div>;
 }
 
