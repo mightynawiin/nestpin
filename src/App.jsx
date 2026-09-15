@@ -66,7 +66,7 @@ function AuthPanel({ onAuthed, onInstall, canInstall }) {
   const [success, setSuccess] = useState('');
   const [busy, setBusy] = useState(false);
   const chooseMode = nextMode => { setMode(nextMode); setError(''); setSuccess(''); window.setTimeout(() => document.querySelector('.auth-form input')?.focus(), 0); };
-  useEffect(() => { const actions = document.querySelector('.landing-actions'); if (!actions || actions.querySelector('.install-button')) return undefined; const button = document.createElement('button'); button.className = 'install-button light'; button.type = 'button'; button.title = 'Install Nestpin as an app'; button.textContent = 'Install app'; button.addEventListener('click', onInstall); actions.insertBefore(button, actions.querySelector('.nav-cta')); return () => button.remove(); }, [onInstall]);
+  useEffect(() => { if (!canInstall) return undefined; const actions = document.querySelector('.landing-actions'); if (!actions || actions.querySelector('.install-button')) return undefined; const button = document.createElement('button'); button.className = 'install-button light'; button.type = 'button'; button.title = 'Install Nestpin as an app'; button.innerHTML = '<span class="install-button-icon">↓</span><span>Install app</span>'; button.addEventListener('click', onInstall); actions.insertBefore(button, actions.querySelector('.nav-cta')); return () => button.remove(); }, [onInstall, canInstall]);
   const submit = async (event) => {
     event.preventDefault(); if (busy) return; setError(''); setSuccess(''); setBusy(true);
 
@@ -180,8 +180,8 @@ function App() {
     const hydrated = await Promise.all((data || []).map(async row => { const photos = await Promise.all((row.listing_photos || []).map(async photo => (await supabase.storage.from('listing-photos').createSignedUrl(photo.storage_path, 3600)).data?.signedUrl)); return { ...row, lat: row.latitude, lng: row.longitude, beds: row.bedrooms, owner: row.owner_id, desc: row.description, photos: photos.filter(Boolean).length ? photos.filter(Boolean) : [fallbackHousePhoto(row.id)] }; })); setListings(hydrated); setLoading(false); };
   useEffect(() => { const onPopState = () => setPath(window.location.pathname); window.addEventListener('popstate', onPopState); return () => window.removeEventListener('popstate', onPopState); }, []);
   useEffect(() => { supabase.auth.getSession().then(({ data }) => { const nextSession = data.session; setSession(nextSession); if (nextSession) { if (window.location.hash.includes('access_token') || new URLSearchParams(window.location.search).has('code')) setNotice('Email confirmed. Welcome to Nestpin.'); if (window.location.pathname !== NESTPIN_PATH) navigate(NESTPIN_PATH); load(nextSession.user); } else { if (window.location.pathname !== HOME_PATH) navigate(HOME_PATH); setLoading(false); } }); const { data: listener } = supabase.auth.onAuthStateChange((event, next) => { setSession(next); if (next) { if (event === 'SIGNED_IN' && (window.location.hash.includes('access_token') || new URLSearchParams(window.location.search).has('code'))) setNotice('Email confirmed. Welcome to Nestpin.'); if (window.location.pathname !== NESTPIN_PATH) navigate(NESTPIN_PATH); load(next.user); } else { if (window.location.pathname !== HOME_PATH) navigate(HOME_PATH); setProfile(null); setLoading(false); } }); return () => listener.subscription.unsubscribe(); }, []);
-  useEffect(() => { const captureInstallPrompt = event => { event.preventDefault(); setInstallPrompt(event); }; const installed = () => { setInstallPrompt(null); setNotice('Nestpin was added to your home screen.'); }; window.addEventListener('beforeinstallprompt', captureInstallPrompt); window.addEventListener('appinstalled', installed); return () => { window.removeEventListener('beforeinstallprompt', captureInstallPrompt); window.removeEventListener('appinstalled', installed); }; }, []);
-  useEffect(() => { const topbar = document.querySelector('.topbar'); if (!topbar || topbar.querySelector('.install-button')) return undefined; const button = document.createElement('button'); button.className = 'install-button'; button.type = 'button'; button.title = 'Install Nestpin as an app'; button.textContent = 'Install app'; button.addEventListener('click', installApp); topbar.insertBefore(button, topbar.querySelector('.profile-button')); return () => button.remove(); }, [path, profile, installPrompt]);
+  useEffect(() => { const captureInstallPrompt = event => { event.preventDefault(); setInstallPrompt(event); setInstallBusy(false); setShowInstallSheet(false); }; const installed = () => { setInstallPrompt(null); setInstallBusy(false); setNotice('Successfully installed! Nestpin is now on your home screen.'); setTimeout(() => setNotice(''), 3200); }; window.addEventListener('beforeinstallprompt', captureInstallPrompt); window.addEventListener('appinstalled', installed); return () => { window.removeEventListener('beforeinstallprompt', captureInstallPrompt); window.removeEventListener('appinstalled', installed); }; }, []);
+  useEffect(() => { if (!installPrompt) return undefined; const topbar = document.querySelector('.topbar'); if (!topbar || topbar.querySelector('.install-button')) return undefined; const button = document.createElement('button'); button.className = 'install-button'; button.type = 'button'; button.title = 'Install Nestpin as an app'; button.innerHTML = '<span class="install-button-icon">↓</span><span>Install app</span>'; button.addEventListener('click', installApp); topbar.insertBefore(button, topbar.querySelector('.profile-button')); return () => button.remove(); }, [path, profile, installPrompt, installBusy]);
   useEffect(() => { if (!navigator.geolocation) return undefined; const watchId = navigator.geolocation.watchPosition(position => setLiveLocation([position.coords.latitude, position.coords.longitude]), undefined, { enableHighAccuracy: true, maximumAge: 30000, timeout: 10000 }); return () => navigator.geolocation.clearWatch(watchId); }, []);
   const onLocationPick = point => { setPendingPin(point); if (adding) return; if (!profile) setCenter(point); };
   const runSearch = async e => { e.preventDefault(); if (!search.trim() || searching) return; setSearching(true); setNotice('Searching nearby places...'); try { const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(search)}`); const data = await res.json(); if (data[0]) { const point = [+data[0].lat, +data[0].lon]; setCenter(point); setMapZoom(14); if (!profile) setPendingPin(point); setNotice('Map centered on your search'); } else setNotice('No matching place found'); } catch { setNotice('Search is unavailable right now'); } finally { setSearching(false); setTimeout(() => setNotice(''), 3000); } };
@@ -192,19 +192,23 @@ function App() {
     }
 
     setShowInstallSheet(false);
+    setInstallBusy(true);
+    setNotice('Preparing install...');
+
     try {
       installPrompt.prompt();
       const result = await installPrompt.userChoice;
       if (result.outcome === 'accepted') {
-        setNotice('Nestpin is being installed...');
+        setNotice('Successfully installed! Nestpin is now on your home screen.');
       } else {
-        setNotice('Install cancelled');
+        setNotice('Install cancelled. You can still add it later.');
       }
     } catch (error) {
       setNotice('Unable to open the install prompt right now.');
     } finally {
+      setInstallBusy(false);
       setInstallPrompt(null);
-      setTimeout(() => setNotice(''), 3500);
+      setTimeout(() => setNotice(''), 3200);
     }
   };
   const renderInstallSheet = () => (
@@ -224,7 +228,7 @@ function App() {
           <span>Home screen access</span>
         </div>
         <div className="install-sheet-actions">
-          <button className="button primary wide" type="button" onClick={() => {
+          <button className="button primary wide install-primary" type="button" onClick={() => {
             if (installPrompt) {
               installApp();
               return;
@@ -232,7 +236,9 @@ function App() {
             setNotice('Use your browser menu and choose “Add to Home Screen” or “Install app”.');
             setShowInstallSheet(false);
             setTimeout(() => setNotice(''), 4500);
-          }}>Install app</button>
+          }}>
+            {installBusy ? <><span className="spinner" /> Installing...</> : <><span className="install-button-icon">↓</span> Install app</>}
+          </button>
           <button className="button secondary wide" type="button" onClick={() => setShowInstallSheet(false)}>Maybe later</button>
         </div>
       </div>
@@ -278,7 +284,7 @@ function App() {
   };
   if (loading) return <div className="loading"><LoaderCircle className="spin" size={28} /> Loading Nestpin</div>;
   if (path !== NESTPIN_PATH || !session) return <>
-    <AuthPanel onAuthed={(user, name) => { setSession({ user }); setLoading(false); navigate(NESTPIN_PATH); }} onInstall={installApp} canInstall />
+    <AuthPanel onAuthed={(user, name) => { setSession({ user }); setLoading(false); navigate(NESTPIN_PATH); }} onInstall={installApp} canInstall={Boolean(installPrompt)} />
     {showInstallSheet && renderInstallSheet()}
   </>;
   if (!profile) return <><MapContainer center={center} zoom={3} className="map"><TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" /><MapController center={center} zoom={12} /><MapClick enabled onPick={onLocationPick} />{pendingPin && <Marker position={pendingPin} icon={mineIcon} />}</MapContainer><LocationPanel user={session.user} existing={null} onComplete={p => { setProfile(p); setCenter([p.latitude, p.longitude]); load(session.user); }} />{showInstallSheet && renderInstallSheet()}{notice && <div className="toast">{notice}</div>}</>;
