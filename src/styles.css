@@ -16,7 +16,7 @@ button:disabled{cursor:wait;opacity:.7}
 .button:hover:not(:disabled){box-shadow:0 9px 20px #17241f20;transform:translateY(-2px)}
 .icon-button:hover{background:#e8f0eb;transform:translateY(-2px) rotate(3deg)}
 .profile-button:hover{box-shadow:0 7px 16px #17241f25;transform:translateY(-2px)}
-.install-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid rgba(255,255,255,.5);border-radius:14px;padding:10px 14px;background:linear-gradient(135deg,#16a34a,#0f766e);color:#fff;font-size:12px;font-weight:800;white-space:nowrap;box-shadow:0 14px 30px rgba(15,118,110,.35);opacity:0;transform:translateY(10px) scale(.98);animation:install-pop-in .32s ease forwards}
+.install-button{display:inline-flex!important;align-items:center;justify-content:center;gap:8px;border:1px solid rgba(255,255,255,.5);border-radius:14px;padding:10px 14px;background:linear-gradient(135deg,#16a34a,#0f766e);color:#fff;font-size:12px;font-weight:800;white-space:nowrap;box-shadow:0 14px 30px rgba(15,118,110,.35);opacity:1;transform:none;animation:install-pop-in .32s ease forwards}.install-button.compact{padding:9px 12px;font-size:11px}.install-button.topbar-install{margin-left:8px}.install-button-icon{font-size:0}.install-button-icon::after{content:'↓';font-size:14px}
 .install-button.light{border-color:#d6dfd7;background:linear-gradient(135deg,#2bb673,#116a56);color:#fff}
 .install-button:hover{background:linear-gradient(135deg,#22c55e,#0f8f7d);transform:translateY(-2px) scale(1.01)}
 .install-button.installing{background:linear-gradient(135deg,#f59e0b,#d97706);box-shadow:0 14px 28px rgba(217,119,6,.28)}
