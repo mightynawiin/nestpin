@@ -16,9 +16,20 @@ button:disabled{cursor:wait;opacity:.7}
 .button:hover:not(:disabled){box-shadow:0 9px 20px #17241f20;transform:translateY(-2px)}
 .icon-button:hover{background:#e8f0eb;transform:translateY(-2px) rotate(3deg)}
 .profile-button:hover{box-shadow:0 7px 16px #17241f25;transform:translateY(-2px)}
-.install-button{border:1px solid #ffffff50;border-radius:9px;padding:9px 12px;background:#ffffff18;color:#fff;font-size:12px;font-weight:700;white-space:nowrap}
+.install-button{border:1px solid #ffffff50;border-radius:11px;padding:10px 14px;background:linear-gradient(135deg,#eefaf3,#dfeee7);color:var(--green);font-size:12px;font-weight:800;white-space:nowrap;box-shadow:0 8px 18px rgba(23,36,31,.18)}
 .install-button.light{border-color:#d6dfd7;background:#fff;color:var(--green)}
-.install-button:hover{background:#ffffff30;transform:translateY(-2px)}
+.install-button:hover{background:linear-gradient(135deg,#f8fffb,#e5f3eb);transform:translateY(-2px)}
+.install-sheet-backdrop{position:fixed;inset:0;background:rgba(17,24,20,.5);backdrop-filter:blur(6px);display:grid;place-items:end center;z-index:1200}
+.install-sheet{width:min(100%,420px);margin:0 16px 24px;background:linear-gradient(180deg,#f9faf8 0%,#eef6f1 100%);border:1px solid rgba(255,255,255,.9);border-radius:28px 28px 20px 20px;box-shadow:0 24px 52px rgba(17,24,20,.25);padding:22px 20px 18px}
+.install-sheet-header{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.install-sheet-icon{display:grid;place-items:center;width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,#e49a45,#c96f24);color:#fff;font-weight:900;font-size:28px;box-shadow:0 10px 18px rgba(201,111,36,.35)}
+.install-sheet h3{margin:6px 0 0;font-size:30px;line-height:1;font-family:'Fraunces',serif}
+.install-sheet p{margin:0 0 16px;color:var(--muted);line-height:1.55}
+.install-sheet-benefits{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.install-sheet-benefits span{padding:8px 10px;border-radius:999px;background:rgba(63,119,100,.08);border:1px solid rgba(63,119,100,.12);color:var(--green);font-size:11px;font-weight:700}
+.install-sheet-actions{display:grid;gap:10px}
+.button.secondary{background:#edf2ee;border:1px solid #dfe6e2;color:var(--ink);box-shadow:none}
+.button.secondary:hover{background:#e8f0eb}
 .leaflet-popup-content-wrapper:hover{box-shadow:0 16px 34px #17241f30;transform:translateY(-2px)}
 .map-pin{will-change:transform}
 .map-pin:active{transform:rotate(-45deg) translateY(2px) scale(.94)}

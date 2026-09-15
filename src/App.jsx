@@ -66,7 +66,7 @@ function AuthPanel({ onAuthed, onInstall, canInstall }) {
   const [success, setSuccess] = useState('');
   const [busy, setBusy] = useState(false);
   const chooseMode = nextMode => { setMode(nextMode); setError(''); setSuccess(''); window.setTimeout(() => document.querySelector('.auth-form input')?.focus(), 0); };
-  useEffect(() => { const actions = document.querySelector('.landing-actions'); if (!actions || actions.querySelector('.install-button')) return undefined; const button = document.createElement('button'); button.className = 'install-button light'; button.type = 'button'; button.title = 'Add Nestpin to your home screen'; button.textContent = '+ Add to home screen'; button.addEventListener('click', onInstall); actions.insertBefore(button, actions.querySelector('.nav-cta')); return () => button.remove(); }, [onInstall]);
+  useEffect(() => { const actions = document.querySelector('.landing-actions'); if (!actions || actions.querySelector('.install-button')) return undefined; const button = document.createElement('button'); button.className = 'install-button light'; button.type = 'button'; button.title = 'Install Nestpin as an app'; button.textContent = 'Install app'; button.addEventListener('click', onInstall); actions.insertBefore(button, actions.querySelector('.nav-cta')); return () => button.remove(); }, [onInstall]);
   const submit = async (event) => {
     event.preventDefault(); if (busy) return; setError(''); setSuccess(''); setBusy(true);
 
@@ -175,17 +175,69 @@ function AddModal({ user, location, onClose, onSaved }) {
 }
 
 function App() {
-  const [session, setSession] = useState(null); const [profile, setProfile] = useState(null); const [listings, setListings] = useState([]); const [selected, setSelected] = useState(null); const [showFullDetails, setShowFullDetails] = useState(false); const [search, setSearch] = useState(''); const [center, setCenter] = useState(DEFAULT_CENTER); const [mapZoom, setMapZoom] = useState(12); const [liveLocation, setLiveLocation] = useState(null); const [radius, setRadius] = useState(10); const [adding, setAdding] = useState(false); const [pendingPin, setPendingPin] = useState(null); const [loading, setLoading] = useState(true); const [locating, setLocating] = useState(false); const [searching, setSearching] = useState(false); const [installPrompt, setInstallPrompt] = useState(null); const [notice, setNotice] = useState(''); const [path, setPath] = useState(window.location.pathname);
+  const [session, setSession] = useState(null); const [profile, setProfile] = useState(null); const [listings, setListings] = useState([]); const [selected, setSelected] = useState(null); const [showFullDetails, setShowFullDetails] = useState(false); const [search, setSearch] = useState(''); const [center, setCenter] = useState(DEFAULT_CENTER); const [mapZoom, setMapZoom] = useState(12); const [liveLocation, setLiveLocation] = useState(null); const [radius, setRadius] = useState(10); const [adding, setAdding] = useState(false); const [pendingPin, setPendingPin] = useState(null); const [loading, setLoading] = useState(true); const [locating, setLocating] = useState(false); const [searching, setSearching] = useState(false); const [installPrompt, setInstallPrompt] = useState(null); const [showInstallSheet, setShowInstallSheet] = useState(false); const [notice, setNotice] = useState(''); const [path, setPath] = useState(window.location.pathname);
   const load = async user => { const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(); setProfile(p); if (p?.latitude !== null && p?.latitude !== undefined && p?.longitude !== null && p?.longitude !== undefined) { const next = [p.latitude, p.longitude]; setCenter(next); } const { data } = await supabase.from('listings').select('*, listing_photos(storage_path)').order('created_at', { ascending: false });
     const hydrated = await Promise.all((data || []).map(async row => { const photos = await Promise.all((row.listing_photos || []).map(async photo => (await supabase.storage.from('listing-photos').createSignedUrl(photo.storage_path, 3600)).data?.signedUrl)); return { ...row, lat: row.latitude, lng: row.longitude, beds: row.bedrooms, owner: row.owner_id, desc: row.description, photos: photos.filter(Boolean).length ? photos.filter(Boolean) : [fallbackHousePhoto(row.id)] }; })); setListings(hydrated); setLoading(false); };
   useEffect(() => { const onPopState = () => setPath(window.location.pathname); window.addEventListener('popstate', onPopState); return () => window.removeEventListener('popstate', onPopState); }, []);
   useEffect(() => { supabase.auth.getSession().then(({ data }) => { const nextSession = data.session; setSession(nextSession); if (nextSession) { if (window.location.hash.includes('access_token') || new URLSearchParams(window.location.search).has('code')) setNotice('Email confirmed. Welcome to Nestpin.'); if (window.location.pathname !== NESTPIN_PATH) navigate(NESTPIN_PATH); load(nextSession.user); } else { if (window.location.pathname !== HOME_PATH) navigate(HOME_PATH); setLoading(false); } }); const { data: listener } = supabase.auth.onAuthStateChange((event, next) => { setSession(next); if (next) { if (event === 'SIGNED_IN' && (window.location.hash.includes('access_token') || new URLSearchParams(window.location.search).has('code'))) setNotice('Email confirmed. Welcome to Nestpin.'); if (window.location.pathname !== NESTPIN_PATH) navigate(NESTPIN_PATH); load(next.user); } else { if (window.location.pathname !== HOME_PATH) navigate(HOME_PATH); setProfile(null); setLoading(false); } }); return () => listener.subscription.unsubscribe(); }, []);
   useEffect(() => { const captureInstallPrompt = event => { event.preventDefault(); setInstallPrompt(event); }; const installed = () => { setInstallPrompt(null); setNotice('Nestpin was added to your home screen.'); }; window.addEventListener('beforeinstallprompt', captureInstallPrompt); window.addEventListener('appinstalled', installed); return () => { window.removeEventListener('beforeinstallprompt', captureInstallPrompt); window.removeEventListener('appinstalled', installed); }; }, []);
-  useEffect(() => { const topbar = document.querySelector('.topbar'); if (!topbar || topbar.querySelector('.install-button')) return undefined; const button = document.createElement('button'); button.className = 'install-button'; button.type = 'button'; button.title = 'Add Nestpin to your home screen'; button.textContent = '+ Add to home'; button.addEventListener('click', installApp); topbar.insertBefore(button, topbar.querySelector('.profile-button')); return () => button.remove(); }, [path, profile, installPrompt]);
+  useEffect(() => { const topbar = document.querySelector('.topbar'); if (!topbar || topbar.querySelector('.install-button')) return undefined; const button = document.createElement('button'); button.className = 'install-button'; button.type = 'button'; button.title = 'Install Nestpin as an app'; button.textContent = 'Install app'; button.addEventListener('click', installApp); topbar.insertBefore(button, topbar.querySelector('.profile-button')); return () => button.remove(); }, [path, profile, installPrompt]);
   useEffect(() => { if (!navigator.geolocation) return undefined; const watchId = navigator.geolocation.watchPosition(position => setLiveLocation([position.coords.latitude, position.coords.longitude]), undefined, { enableHighAccuracy: true, maximumAge: 30000, timeout: 10000 }); return () => navigator.geolocation.clearWatch(watchId); }, []);
   const onLocationPick = point => { setPendingPin(point); if (adding) return; if (!profile) setCenter(point); };
   const runSearch = async e => { e.preventDefault(); if (!search.trim() || searching) return; setSearching(true); setNotice('Searching nearby places...'); try { const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(search)}`); const data = await res.json(); if (data[0]) { const point = [+data[0].lat, +data[0].lon]; setCenter(point); setMapZoom(14); if (!profile) setPendingPin(point); setNotice('Map centered on your search'); } else setNotice('No matching place found'); } catch { setNotice('Search is unavailable right now'); } finally { setSearching(false); setTimeout(() => setNotice(''), 3000); } };
-  const installApp = async () => { if (!installPrompt) { setNotice('Use your browser menu to choose Add to Home Screen.'); setTimeout(() => setNotice(''), 3500); return; } installPrompt.prompt(); const result = await installPrompt.userChoice; if (result.outcome === 'accepted') setNotice('Adding Nestpin to your home screen...'); setInstallPrompt(null); };
+  const installApp = async () => {
+    if (!installPrompt) {
+      setShowInstallSheet(true);
+      return;
+    }
+
+    setShowInstallSheet(false);
+    try {
+      installPrompt.prompt();
+      const result = await installPrompt.userChoice;
+      if (result.outcome === 'accepted') {
+        setNotice('Nestpin is being installed...');
+      } else {
+        setNotice('Install cancelled');
+      }
+    } catch (error) {
+      setNotice('Unable to open the install prompt right now.');
+    } finally {
+      setInstallPrompt(null);
+      setTimeout(() => setNotice(''), 3500);
+    }
+  };
+  const renderInstallSheet = () => (
+    <div className="install-sheet-backdrop" onClick={() => setShowInstallSheet(false)}>
+      <div className="install-sheet" onClick={event => event.stopPropagation()}>
+        <div className="install-sheet-header">
+          <div className="install-sheet-icon">N</div>
+          <div>
+            <span className="eyebrow">Install app</span>
+            <h3>Nestpin</h3>
+          </div>
+        </div>
+        <p>Add Nestpin to your home screen and open it like a native app.</p>
+        <div className="install-sheet-benefits">
+          <span>Fast launch</span>
+          <span>Offline ready</span>
+          <span>Home screen access</span>
+        </div>
+        <div className="install-sheet-actions">
+          <button className="button primary wide" type="button" onClick={() => {
+            if (installPrompt) {
+              installApp();
+              return;
+            }
+            setNotice('Use your browser menu and choose “Add to Home Screen” or “Install app”.');
+            setShowInstallSheet(false);
+            setTimeout(() => setNotice(''), 4500);
+          }}>Install app</button>
+          <button className="button secondary wide" type="button" onClick={() => setShowInstallSheet(false)}>Maybe later</button>
+        </div>
+      </div>
+    </div>
+  );
   const remove = async item => { if (!confirm('Remove this listing?')) return; setNotice('Removing listing...'); const { data: photos } = await supabase.from('listing_photos').select('storage_path').eq('listing_id', item.id); if (photos?.length) await supabase.storage.from('listing-photos').remove(photos.map(p => p.storage_path)); const { error } = await supabase.from('listings').delete().eq('id', item.id); if (error) { setNotice(error.message); } else { setListings(current => current.filter(l => l.id !== item.id)); setSelected(null); setNotice('Listing removed'); } setTimeout(() => setNotice(''), 3000); };
   const phoneNumber = selected?.contact?.replace(/[^\d+]/g, '') || '';
   useEffect(() => {
@@ -225,8 +277,11 @@ function App() {
     }, { enableHighAccuracy: true, maximumAge: 30000, timeout: 10000 });
   };
   if (loading) return <div className="loading"><LoaderCircle className="spin" size={28} /> Loading Nestpin</div>;
-  if (path !== NESTPIN_PATH || !session) return <AuthPanel onAuthed={(user, name) => { setSession({ user }); setLoading(false); navigate(NESTPIN_PATH); }} onInstall={installApp} canInstall />;
-  if (!profile) return <><MapContainer center={center} zoom={3} className="map"><TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" /><MapController center={center} zoom={12} /><MapClick enabled onPick={onLocationPick} />{pendingPin && <Marker position={pendingPin} icon={mineIcon} />}</MapContainer><LocationPanel user={session.user} existing={null} onComplete={p => { setProfile(p); setCenter([p.latitude, p.longitude]); load(session.user); }} />{notice && <div className="toast">{notice}</div>}</>;
+  if (path !== NESTPIN_PATH || !session) return <>
+    <AuthPanel onAuthed={(user, name) => { setSession({ user }); setLoading(false); navigate(NESTPIN_PATH); }} onInstall={installApp} canInstall />
+    {showInstallSheet && renderInstallSheet()}
+  </>;
+  if (!profile) return <><MapContainer center={center} zoom={3} className="map"><TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" /><MapController center={center} zoom={12} /><MapClick enabled onPick={onLocationPick} />{pendingPin && <Marker position={pendingPin} icon={mineIcon} />}</MapContainer><LocationPanel user={session.user} existing={null} onComplete={p => { setProfile(p); setCenter([p.latitude, p.longitude]); load(session.user); }} />{showInstallSheet && renderInstallSheet()}{notice && <div className="toast">{notice}</div>}</>;
   const visible = listings.filter(item => distance(center, [item.lat, item.lng]) <= radius);
   return <div className="app-shell"><header className="topbar"><div className="brand"><span className="brand-mark"><House size={17} /></span> nestpin</div><form className="top-search" onSubmit={runSearch}><Search size={17} /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search a city or region" /><button type="submit">Search</button></form><button className="location-button" title="Center map on my location" aria-label="Center map on my location" onClick={locateUser} disabled={locating}>{locating ? <LoaderCircle className="spin" size={18} /> : <LocateFixed size={18} />}</button><button className="profile-button" title="Sign out" aria-label="Sign out" onClick={async () => { await supabase.auth.signOut(); setSession(null); setProfile(null); navigate(HOME_PATH); }}><span>{profile.display_name?.slice(0, 1).toUpperCase()}</span><LogOut size={14} /></button></header><main className="map-stage"><MapContainer center={center} zoom={12} className="map"><TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" /><MapController center={center} zoom={mapZoom} radius={radius} liveLocation={liveLocation} /><MapClick enabled={adding} onPick={onLocationPick} />{liveLocation && <Marker position={liveLocation} icon={liveIcon} />}{visible.map(item => <Marker key={item.id} position={[item.lat, item.lng]} icon={item.owner === session.user.id ? mineIcon : normalIcon} eventHandlers={{ click: () => setSelected(item), mouseover: event => event.target.openPopup(), mouseout: event => event.target.closePopup() }}><Popup closeButton={false} offset={[0, -34]}><ListingPreview item={item} /></Popup></Marker>)}<Circle center={center} radius={radius * 1000} pathOptions={{ color: '#3f7764', fillOpacity: 0.04 }} />{pendingPin && adding && <Marker position={pendingPin} icon={mineIcon} />}</MapContainer><div className="map-tools"><div className="count"><strong>{visible.length}</strong> places within {radius} km</div><div className="radius-control"><SlidersHorizontal size={15} /><input type="range" min="1" max="200" value={radius} onChange={e => setRadius(+e.target.value)} /><span>{radius} km</span></div></div><button className={`add-button ${adding ? 'cancel' : ''}`} title={adding ? 'Cancel listing' : 'Create a listing'} aria-label={adding ? 'Cancel listing' : 'Create a listing'} onClick={() => { setAdding(!adding); setPendingPin(null); }}>{adding ? <X size={18} /> : <Plus size={18} />}{adding ? 'Cancel' : 'List a place'}</button>{adding && <div className="map-hint">Click anywhere on the map to place your listing</div>}</main>{selected && <div className="detail-card"><button className="icon-button close-detail" title="Close listing details" aria-label="Close listing details" onClick={() => setSelected(null)}><X size={18} /></button>{selected.photos?.[0] && <img src={selected.photos[0]} alt="" />}{!selected.photos?.[0] && <div className="detail-placeholder"><House size={34} /></div>}<div className="detail-content"><span className="eyebrow">Home listing</span><h2>{selected.title}</h2><div className="price">{selected.price}<small> / month</small></div><p className="address"><MapPin size={16} />{selected.address}</p>{selected.bedrooms && <p className="meta">{selected.bedrooms} bedroom{selected.bedrooms === '1' ? '' : 's'}</p>}<p className="description">{selected.description}</p><div className="contact">Contact: {selected.contact}</div>{selected.owner === session.user.id && <button className="button danger wide" onClick={() => remove(selected)}>Remove listing</button>}</div></div>}{notice && <div className="toast">{notice}</div>}{adding && pendingPin && <AddModal user={session.user} location={pendingPin} onClose={() => setAdding(false)} onSaved={() => { setAdding(false); setPendingPin(null); load(session.user); setNotice('Listing published'); setTimeout(() => setNotice(''), 3000); }} />}</div>;
 }
